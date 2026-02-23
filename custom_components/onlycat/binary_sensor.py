@@ -8,6 +8,7 @@ from .binary_sensor_connectivity import OnlyCatConnectionSensor
 from .binary_sensor_contraband import OnlyCatContrabandSensor
 from .binary_sensor_device_errors import OnlyCatErrorSensor
 from .binary_sensor_event import OnlyCatEventSensor
+from .binary_sensor_human import OnlyCatHumanSensor
 from .binary_sensor_lock import OnlyCatLockSensor
 
 if TYPE_CHECKING:
@@ -40,6 +41,10 @@ async def async_setup_entry(
                 api_client=entry.runtime_data.client,
             ),
             OnlyCatConnectionSensor(
+                device=device,
+                api_client=entry.runtime_data.client,
+            ),
+            OnlyCatHumanSensor(
                 device=device,
                 api_client=entry.runtime_data.client,
             ),
