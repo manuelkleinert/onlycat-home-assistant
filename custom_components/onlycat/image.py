@@ -49,14 +49,13 @@ async def async_setup_entry(
     events = await entry.runtime_data.client.send_message(
         "getEvents", {"subscribe": True}
     )
-    if events is None or len(events) == 0:
-        return
-    events.sort(key=lambda e: datetime.fromisoformat(e.get("timestamp")), reverse=True)
-    for entity in entities:
-        for event in events:
-            if event.get("deviceId") == entity.device.device_id:
-                await entity.update_event(Event.from_api_response(event))
-                break
+    if events and len(events) > 0:
+        events.sort(key=lambda e: datetime.fromisoformat(e.get("timestamp")), reverse=True)
+        for entity in entities:
+            for event in events:
+                if event.get("deviceId") == entity.device.device_id:
+                    await entity.update_event(Event.from_api_response(event))
+                    break
 
 
 class OnlyCatLastImage(ImageEntity):
