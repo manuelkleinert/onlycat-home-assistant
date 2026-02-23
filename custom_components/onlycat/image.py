@@ -11,7 +11,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
-from .data.event import Event, EventUpdate
+from .data.event import Event
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -25,12 +25,16 @@ _LOGGER = logging.getLogger(__name__)
 IMAGE_BASEURL = "https://gateway.onlycat.com/events/"
 
 
+# -----------------------------------------------------------
+# Setup
+# -----------------------------------------------------------
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: OnlyCatConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up OnlyCat image entities."""
+
     entities: list[OnlyCatLastImage] = []
 
     for device in entry.runtime_data.devices:
@@ -44,7 +48,7 @@ async def async_setup_entry(
 
     async_add_entities(entities)
 
-    # Initial events laden
+    # Initial Events laden
     events = await entry.runtime_data.client.send_message(
         "getEvents", {"subscribe": True}
     )
@@ -58,16 +62,20 @@ async def async_setup_entry(
         for entity in entities:
             for event in events:
                 if event.get("deviceId") == entity.device.device_id:
-                    await entity.update_event(Event.from_api_response(event))
+                    entity.set_event(Event.from_api_response(event))
                     break
 
 
+# -----------------------------------------------------------
+# Entity
+# -----------------------------------------------------------
+
 class OnlyCatLastImage(ImageEntity):
-    """OnlyCat last activity image entity."""
 
     _attr_has_entity_name = True
     _attr_name = "Last activity image"
     _attr_content_type = "image/jpeg"
+    _attr_should_poll = False
 
     def __init__(
         self,
@@ -75,7 +83,6 @@ class OnlyCatLastImage(ImageEntity):
         device: Device,
         api_client: OnlyCatApiClient,
     ) -> None:
-        """Initialize entity."""
         super().__init__()
 
         self.hass = hass
@@ -90,14 +97,10 @@ class OnlyCatLastImage(ImageEntity):
             + "_last_activity_image"
         )
 
-        self._attr_should_poll = False
+        # Nur rohes Event-JSON verarbeiten
+        api_client.add_event_listener("eventUpdate", self._handle_raw_event)
 
-        api_client.add_event_listener("eventUpdate", self._on_event_update)
-        api_client.add_event_listener("deviceEventUpdate", self._on_event_update)
-
-    # ------------------------------------------------------------------
-    # Device Info
-    # ------------------------------------------------------------------
+    # -----------------------------------------------------
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -107,52 +110,34 @@ class OnlyCatLastImage(ImageEntity):
             serial_number=self.device.device_id,
         )
 
-    # ------------------------------------------------------------------
-    # Event Handling
-    # ------------------------------------------------------------------
+    # -----------------------------------------------------
+    # Event Handling (vereinfacht)
+    # -----------------------------------------------------
 
-    async def _on_event_update(self, data: dict) -> None:
-        """Handle incoming websocket updates."""
+    async def _handle_raw_event(self, data: dict) -> None:
         if data.get("deviceId") != self.device.device_id:
             return
 
-        event_update = EventUpdate.from_api_response(data)
+        _LOGGER.warning("Raw image event received: %s", data)
 
-        if (
-            self._current_event is None
-            or event_update.event_id != self._current_event.event_id
-        ):
-            self._current_event = event_update.event
+        self.set_event(Event.from_api_response(data))
+        self.async_update_ha_state(True)
 
-        self._current_event.update_from(event_update.event)
-
-        self._cached_image = None
-
-        _LOGGER.debug(
-            "New event received for device %s: %s",
-            self.device.device_id,
-            self._current_event.event_id,
-        )
-
-        self.async_write_ha_state()
-
-    async def update_event(self, event: Event) -> None:
-        """Initial event load."""
+    def set_event(self, event: Event) -> None:
         self._current_event = event
         self._cached_image = None
-        self.async_write_ha_state()
 
-    # ------------------------------------------------------------------
+    # -----------------------------------------------------
     # Image Fetching
-    # ------------------------------------------------------------------
+    # -----------------------------------------------------
 
     async def async_image(self) -> bytes | None:
-        """Return image bytes to Home Assistant."""
 
         if self._cached_image:
             return self._cached_image
 
-        if not self._current_event:
+        if not self._current_event or not self._current_event.event_id:
+            _LOGGER.warning("No valid event available for image")
             return None
 
         frame_to_show = (
@@ -172,26 +157,23 @@ class OnlyCatLastImage(ImageEntity):
             f"{int(frame_to_show)}"
         )
 
-        _LOGGER.debug("Fetching image from %s", image_url)
+        _LOGGER.warning("Fetching image from %s", image_url)
 
         session = async_get_clientsession(self.hass)
 
         try:
             async with session.get(
                 image_url,
-                headers=self._api_client.get_auth_headers(),  # falls nötig
+                headers=self._api_client.get_auth_headers(),
             ) as resp:
+
+                _LOGGER.warning("Image HTTP status: %s", resp.status)
+
                 if resp.status == 200:
                     self._cached_image = await resp.read()
                     return self._cached_image
 
-                _LOGGER.warning(
-                    "Failed to fetch image (%s): HTTP %s",
-                    image_url,
-                    resp.status,
-                )
-
         except Exception as err:
-            _LOGGER.error("Error fetching image: %s", err)
+            _LOGGER.error("Image fetch error: %s", err)
 
         return None
