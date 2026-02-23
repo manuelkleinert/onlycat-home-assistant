@@ -63,7 +63,7 @@
             }
         },
         "image": {
-            "onlycat_event_image": {
+            "onlycat_last_activity_image": {
                 "name": "Latest Event Image"
             }
         }
