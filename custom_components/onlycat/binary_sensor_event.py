@@ -14,6 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
 from .data.event import Event, EventUpdate
+from .image import IMAGE_BASEURL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,6 +88,22 @@ class OnlyCatEventSensor(BinarySensorEntity):
             }
             if event.rfid_codes:
                 self._attr_extra_state_attributes["rfidCodes"] = event.rfid_codes
+
+            frame_to_show = (
+                event.poster_frame_index
+                if event.poster_frame_index is not None
+                else event.frame_count / 2
+                if event.frame_count is not None
+                else 1
+            )
+            self._attr_extra_state_attributes["last_image_url"] = (
+                IMAGE_BASEURL
+                + str(event.device_id)
+                + "/"
+                + str(event.event_id)
+                + "/"
+                + str(frame_to_show)
+            )
         elif event.frame_count:
             # Frame count is present, event is concluded
             self._attr_is_on = False
