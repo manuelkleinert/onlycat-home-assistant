@@ -83,7 +83,7 @@ class OnlyCatLastImage(ImageEntity):
         device: Device,
         api_client: OnlyCatApiClient,
     ) -> None:
-        super().__init__()
+        super().__init__(hass)
 
         self.hass = hass
         self.device = device
