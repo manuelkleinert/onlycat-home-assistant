@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+### Use the new reboot-log API
+- Device reboot data now comes from `getDeviceRebootLogs`, which returns one object
+  per reboot instead of one row per field. The old `getDeviceErrorLogs` event is
+  deprecated but still served, so older versions of this integration keep working.
+- **Requires OnlyCat gateway 2026-07-31 or later.** Do not release ahead of it.
+- The `errors` attribute on the device-errors sensor changes shape:
+  `{deviceId, timestamp, build, cause, isError, summary, detail, message}` instead of
+  `{time, deviceId, measureName, message}`. Automations reading `message` are
+  unaffected; those reading `time` should read `timestamp`.
+- `build`, `cause`, `isError`, `summary` and `detail` are newly available. A null
+  means the firmware of the day did not report it, not that the value was false or
+  zero — `cause`, `summary` and `isError` exist for reboots from 2026-03-21, and
+  `build` from 2026-07-14.
+- The sensor still turns on for any reboot in the polling window. Distinguishing a
+  crash from a clean requested reboot using `isError` is deliberately left as a
+  separate change, since it would alter what existing automations fire on.
+---
+
 ## v2.0.6
 ### Update dependencies
 - Bump actions/checkout from 6.0.3 to 7.0.1 (#74)
