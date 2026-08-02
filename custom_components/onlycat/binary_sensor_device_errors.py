@@ -68,26 +68,13 @@ class OnlyCatErrorSensor(CoordinatorEntity, BinarySensorEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator.
+        """
+        Handle updated data from the coordinator.
 
         The `errors` attribute now carries one object per reboot, from
         getDeviceRebootLogs:
 
             {deviceId, timestamp, build, cause, isError, summary, detail, message}
-
-        It previously carried one row per field from getDeviceErrorLogs, each
-        {time, deviceId, measureName, message}. `message` is unchanged, so
-        automations reading that keep working; anything reading `time` needs
-        `timestamp`.
-
-        A null field means the firmware of the day did not report it, not that
-        the value was false or zero: cause, summary and isError only exist for
-        reboots from 2026-03-21, and build from 2026-07-14.
-
-        The sensor still turns on for *any* reboot in the polling window, as it
-        always has. Now that isError exists it could tell a crash from a clean
-        requested reboot, but that changes what existing automations fire on, so
-        it is left as its own decision rather than folded into this migration.
         """
         self._attr_is_on = (
             len(self.coordinator.data[self.device.device_id]["errors"]) > 0

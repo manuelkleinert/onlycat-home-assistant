@@ -58,16 +58,6 @@ class OnlyCatDataUpdateCoordinator(DataUpdateCoordinator):
             await self.fetch_device_transit_policies(device)
             data[device.device_id] = {}
             try:
-                # getDeviceRebootLogs returns one object per reboot, with
-                # build/cause/isError/summary/detail/message as typed fields.
-                # It replaces getDeviceErrorLogs, which returned one row per
-                # field with a `measureName` discriminator — the shape the
-                # platform's old Timestream storage imposed on callers.
-                #
-                # Needs gateway 2026-07-31 or later. The old event still works
-                # and is kept deprecated precisely because this integration is
-                # user-installed and cannot be upgraded on demand, so do not
-                # release this ahead of the gateway.
                 data[device.device_id][
                     "errors"
                 ] = await self.config_entry.runtime_data.client.send_message(
