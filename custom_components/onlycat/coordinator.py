@@ -61,14 +61,13 @@ class OnlyCatDataUpdateCoordinator(DataUpdateCoordinator):
                 data[device.device_id][
                     "errors"
                 ] = await self.config_entry.runtime_data.client.send_message(
-                    "getDeviceErrorLogs",
+                    "getDeviceRebootLogs",
                     {
                         "deviceId": device.device_id,
                         "limit": 100,
                         "hours": self.config_entry.data["settings"].get(
                             "poll_interval_hours", 1
                         ),
-                        "measureName": "message",
                     },
                 )
             except TimeoutError:

@@ -68,7 +68,14 @@ class OnlyCatErrorSensor(CoordinatorEntity, BinarySensorEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
+        """
+        Handle updated data from the coordinator.
+
+        The `errors` attribute now carries one object per reboot, from
+        getDeviceRebootLogs:
+
+            {deviceId, timestamp, build, cause, isError, summary, detail, message}
+        """
         self._attr_is_on = (
             len(self.coordinator.data[self.device.device_id]["errors"]) > 0
         )
